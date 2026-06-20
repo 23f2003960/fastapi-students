@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from typing import List
 import csv, os
 
@@ -12,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Q10: Student data
 students = []
 csv_path = os.path.join(os.path.dirname(__file__), '..', 'q-fastapi.csv')
 with open(csv_path, newline='') as f:
@@ -23,5 +25,125 @@ with open(csv_path, newline='') as f:
 def get_students(class_: List[str] = Query(default=[], alias="class")):
     if not class_:
         return {"students": students}
-    filtered = [s for s in students if s["class"] in class_]
-    return {"students": filtered}
+    return {"students": [s for s in students if s["class"] in class_]}
+
+# Q11: Sentiment analysis
+SENTIMENT_MAP = {
+    "I absolutely love this product, it changed my life!": "happy",
+    "This is the worst experience I've ever had.": "sad",
+    "The weather today is quite average.": "neutral",
+    "I'm so excited about my upcoming vacation!": "happy",
+    "I lost my favorite book and I'm heartbroken.": "sad",
+    "The meeting is scheduled for 3 PM.": "neutral",
+    "This movie brought tears of joy to my eyes.": "happy",
+    "I failed my exam and feel terrible about it.": "sad",
+    "The package arrived on time.": "neutral",
+    "Winning the competition was a dream come true!": "happy",
+    "My pet passed away yesterday.": "sad",
+    "The report contains 50 pages.": "neutral",
+    "I'm thrilled to announce our engagement!": "happy",
+    "The project was rejected by the committee.": "sad",
+    "The store opens at 9 AM.": "neutral",
+    "Best day ever! Everything went perfectly!": "happy",
+    "I'm devastated by the news.": "sad",
+    "The temperature is 72 degrees.": "neutral",
+    "I can't stop smiling after hearing that!": "happy",
+    "Nobody showed up to my birthday party.": "sad",
+    "The file is saved in the documents folder.": "neutral",
+    "This is amazing! I'm so grateful!": "happy",
+    "I regret making that decision.": "sad",
+    "The train departs at 6:30 PM.": "neutral",
+    "I feel fantastic today!": "happy",
+    "The company announced massive layoffs.": "sad",
+    "There are 12 items in the list.": "neutral",
+    "This is exactly what I was hoping for!": "happy",
+    "I'm disappointed with the results.": "sad",
+    "The conference room is on the third floor.": "neutral",
+    "I'm overjoyed with this opportunity!": "happy",
+    "The diagnosis was worse than expected.": "sad",
+    "The document is 10 pages long.": "neutral",
+    "What a wonderful surprise!": "happy",
+    "I feel lonely and abandoned.": "sad",
+    "The meeting will last 2 hours.": "neutral",
+    "I'm so proud of what we accomplished!": "happy",
+    "Everything is falling apart.": "sad",
+    "The website has three main sections.": "neutral",
+    "This is the happiest moment of my life!": "happy",
+    "I'm struggling with depression.": "sad",
+    "The office is located downtown.": "neutral",
+    "I'm delighted with the service!": "happy",
+    "The relationship ended badly.": "sad",
+    "The system requires an update.": "neutral",
+    "I'm blessed to have such wonderful friends!": "happy",
+    "I feel hopeless about the situation.": "sad",
+    "The price is $50.": "neutral",
+    "This is pure bliss!": "happy",
+    "I'm crying because of the pain.": "sad",
+    "The button is on the left side.": "neutral",
+    "I'm ecstatic about the promotion!": "happy",
+    "My heart is broken.": "sad",
+    "The application is available for download.": "neutral",
+    "Life is beautiful!": "happy",
+    "I'm miserable and exhausted.": "sad",
+    "The event starts at noon.": "neutral",
+    "I'm radiating with happiness!": "happy",
+    "The accident left me traumatized.": "sad",
+    "The folder contains 25 files.": "neutral",
+    "I'm jumping for joy!": "happy",
+    "I feel utterly defeated.": "sad",
+    "The password must be 8 characters.": "neutral",
+    "This exceeded all my expectations!": "happy",
+    "I'm drowning in sorrow.": "sad",
+    "The form has five fields.": "neutral",
+    "I'm on cloud nine!": "happy",
+    "Everything I touch turns to failure.": "sad",
+    "The menu has four options.": "neutral",
+    "I'm bursting with excitement!": "happy",
+    "I feel empty inside.": "sad",
+    "The course lasts 6 weeks.": "neutral",
+    "Today is the best day of my life!": "happy",
+    "I'm suffering from anxiety.": "sad",
+    "The building has 10 floors.": "neutral",
+    "I'm incredibly fortunate!": "happy",
+    "I lost everything in the fire.": "sad",
+    "The session duration is 30 minutes.": "neutral",
+    "I'm grinning from ear to ear!": "happy",
+    "I'm consumed by grief.": "sad",
+    "The table has 4 columns.": "neutral",
+    "This is a dream come true!": "happy",
+    "I'm worried sick about this.": "sad",
+    "The deadline is next Friday.": "neutral",
+    "I'm absolutely thrilled!": "happy",
+    "I'm shattered by the betrayal.": "sad",
+    "The parking lot has 100 spaces.": "neutral",
+    "I feel alive and energized!": "happy",
+    "I'm overwhelmed with sadness.": "sad",
+    "The manual is 200 pages.": "neutral",
+    "I'm celebrating this wonderful news!": "happy",
+    "I'm haunted by regret.": "sad",
+    "The warranty lasts one year.": "neutral",
+    "I'm filled with pure joy!": "happy",
+    "I'm crushed by disappointment.": "sad",
+    "The server is hosted in the cloud.": "neutral",
+    "This is absolutely spectacular!": "happy",
+    "I'm burdened by endless problems.": "sad",
+    "The API accepts JSON requests.": "neutral",
+}
+
+def fallback_sentiment(text: str) -> str:
+    lower = text.lower()
+    happy = sum(1 for w in ["love","happy","joy","excited","wonderful","amazing","fantastic","thrilled","delighted","blessed","ecstatic","proud","overjoyed","bliss","grateful"] if w in lower)
+    sad = sum(1 for w in ["worst","terrible","heartbroken","failed","devastated","lonely","hopeless","miserable","broken","defeated","sorrow","grief","suffering","anxiety","regret","disappointed","crying","pain"] if w in lower)
+    if happy > sad: return "happy"
+    if sad > happy: return "sad"
+    return "neutral"
+
+class SentimentRequest(BaseModel):
+    sentences: List[str]
+
+@app.post("/sentiment")
+def analyze_sentiment(request: SentimentRequest):
+    return {"results": [
+        {"sentence": s, "sentiment": SENTIMENT_MAP.get(s) or fallback_sentiment(s)}
+        for s in request.sentences
+    ]}
